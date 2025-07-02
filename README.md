@@ -1,22 +1,22 @@
-# 📦 Persistent Job Scheduler (NestJS + PostgreSQL)
+# Persistent Job Scheduler (NestJS + PostgreSQL)
 
 A custom-built persistent job scheduler built using **NestJS** and **PostgreSQL**, inspired by real-world use cases like **auto-cancel bookings in Ola/Uber/Rapido**. The system ensures that even if the server crashes, scheduled jobs will still execute after restart.
 
 ---
 
-## ✅ Features Implemented
+## Features Implemented
 
-- ✅ Custom job scheduler using NestJS (no external scheduler libraries used)
-- ✅ PostgreSQL used to persist jobs and bookings
-- ✅ Polling mechanism to check for due jobs every 10 seconds
-- ✅ Job persists even after server crash or restart
-- ✅ Real-world use case: auto-cancel ride booking if not confirmed within 2 minutes
-- ✅ Clean modular folder structure with TypeORM
-- ✅ Fully tested with crash + restart simulation
+- Custom job scheduler using NestJS (no external scheduler libraries used)
+- PostgreSQL used to persist jobs and bookings
+- Polling mechanism to check for due jobs every 10 seconds
+- Job persists even after server crash or restart
+- Real-world use case: auto-cancel ride booking if not confirmed within 2 minutes
+- Clean modular folder structure with TypeORM
+- Fully tested with crash + restart simulation
 
 ---
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 - **Node.js** + **NestJS**
 - **PostgreSQL**
@@ -26,7 +26,7 @@ A custom-built persistent job scheduler built using **NestJS** and **PostgreSQL*
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 src/
@@ -39,7 +39,7 @@ src/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### 1. Clone and install dependencies
 
@@ -67,9 +67,9 @@ npm run start:dev
 
 ---
 
-## 🧪 Testing the Flow
+## Testing the Flow
 
-### ✅ Step 1: Create a Booking
+### Step 1: Create a Booking
 
 Use Postman:
 
@@ -84,13 +84,13 @@ Content-Type: application/json
 
 This creates a booking with status `pending` and schedules a cancel job after 2 minutes.
 
-### ✅ Step 2: Crash the Server
+### Step 2: Crash the Server
 
 - After booking is created, simulate a crash:
-  - Option 1: Close VSCode terminal using the trash ❌ button
+  - Option 1: Close VSCode terminal using the trash X button or delete icon button
   - Option 2: Use `kill -9 <PID>` to force kill process
 
-### ✅ Step 3: Restart the Server
+### Step 3: Restart the Server
 
 ```bash
 npm run start:dev
@@ -105,7 +105,7 @@ Booking <booking-id> cancelled & job marked done
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 - Bookings are created with status `pending`
 - A job is inserted in the `jobs` table with `runAt = now + 2 mins`
@@ -119,7 +119,7 @@ status = 'pending' AND runAt <= NOW()
 
 ---
 
-## 💡 Real-World Use Case Implemented
+## Real-World Use Case Implemented
 
 Auto-cancel ride bookings like in:
 
@@ -130,15 +130,15 @@ Auto-cancel ride bookings like in:
 
 ---
 
-## ✅ Final Result
+## Final Result
 
-- 🔒 Jobs are persisted in PostgreSQL
-- 💥 Server crash simulated successfully
-- 🔁 Jobs executed even after server restart
-- 💯 Fully custom implementation
+- Jobs are persisted in PostgreSQL
+- Server crash simulated successfully
+- Jobs executed even after server restart
+- Fully custom implementation
 
 ---
 
-## 👩‍💻 Made By
+## Made By
 
 > Deeksha — with complete custom logic, testing, and real-world simulation based on mentor's task.
