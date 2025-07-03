@@ -139,6 +139,28 @@ Auto-cancel ride bookings like in:
 
 ---
 
+## What I Learned from This Assignment
+
+- This assignment helped me understand how to plan and build a solution step by step, just like it’s done in real-world projects.
+
+- I learned how a persistent job scheduler works - where jobs can still run even if the server crashes and restarts later. This made me realize how important reliability is in backend systems.
+
+- I didn’t use any ready-made libraries. Instead, I built my own logic that keeps checking the database every few seconds to find and run pending jobs. It helped me understand how background workers actually work behind the scenes.
+
+- I used PostgreSQL to save both bookings and jobs. By using database timestamps, I could schedule jobs to run at a specific time later, without any external cron tools.
+
+- For the real-life example, I chose the use case of auto-cancelling ride bookings like Ola, Uber, Rapido - where if a ride is not confirmed in time, it's automatically cancelled after a fixed period.
+
+- This concept is also used in many other places:
+
+  Food delivery apps (like Zomato/Swiggy) to auto-cancel unaccepted orders.
+  E-commerce platforms (like Amazon) for flash-sale timeout cart releases.
+  Banking apps for session expiry or auto-logouts.
+  Reminder systems that send alerts after fixed durations.
+  Email services that retry sending failed emails.
+
+- I also faced challenges like how to test crash and restart scenarios properly and also I Fixed it.
+
 ## Made By
 
 > Deeksha — with complete custom logic, testing, and real-world simulation based on mentor's task.
