@@ -1,28 +1,49 @@
-# Persistent Job Scheduler (NestJS + PostgreSQL)
+# Persistent Job Scheduler using NestJS + PostgreSQL
 
-A custom-built persistent job scheduler built using **NestJS** and **PostgreSQL**, inspired by real-world use cases like **auto-cancel bookings in Ola/Uber/Rapido**. The system ensures that even if the server crashes, scheduled jobs will still execute after restart.
+This project simulates a real-world scenario just like how platforms such as **Ola, Uber, or Rapido** auto-cancel ride bookings if not confirmed within a few minutes. Instead of using third-party libraries or in-memory schedulers, I built a **persistent job scheduler** using **NestJS**, **PostgreSQL**, and **TypeORM**, which can **survive server crashes or restarts**.
 
 ---
 
-## Features Implemented
+## Key Features
 
-- Custom job scheduler using NestJS (no external scheduler libraries used)
-- PostgreSQL used to persist jobs and bookings
-- Polling mechanism to check for due jobs every 10 seconds
-- Job persists even after server crash or restart
-- Real-world use case: auto-cancel ride booking if not confirmed within 2 minutes
-- Clean modular folder structure with TypeORM
-- Fully tested with crash + restart simulation
+- Job scheduler built from scratch (no Bull/Cron library used)
+- All jobs and bookings are stored in PostgreSQL (no in-memory loss)
+- Scheduler polls the database every 10 seconds to check for due jobs
+- Real use case implemented: **Auto-cancel a ride if unconfirmed after 2 minutes**
+- Even if server crashes, the pending job runs once the server is back
+- **Used CronExpression (EVERY_10_SECONDS)** via `@nestjs/schedule` instead of `setTimeout`/`setInterval`
+- Clean modular structure (separate services for jobs, booking, scheduler)
+- Used **Winston Logger** for better error tracking
+- Used **TypeORM migrations** (instead of unsafe `synchronize: true`)
+
+---
+
+## Real-World Use Case
+
+Whenever a user books a ride:
+
+- A booking is created with status `PENDING`
+- A job is created that will **auto-cancel** this booking after 2 minutes if not confirmed
+
+The scheduler service keeps checking every 10 seconds — and when the time is up, it checks the booking status and cancels it if still unconfirmed.
+
+This same logic applies to:
+
+- Zomato: unaccepted orders
+- Flipkart: cart hold timeout
+- Banking apps: auto logout
+- Email retry: send failed emails again
 
 ---
 
 ## Tech Stack
 
-- **Node.js** + **NestJS**
-- **PostgreSQL**
-- **TypeORM**
-- **Dotenv** for environment config
-- **Postman** for API testing
+- **NestJS** + **@nestjs/schedule** (for cron-style polling)
+- **PostgreSQL** + **TypeORM**
+- **Winston Logger**
+- **date-fns** (for manipulating time)
+- **Dotenv** (env config)
+- **Postman** (for API testing)
 
 ---
 
@@ -30,28 +51,32 @@ A custom-built persistent job scheduler built using **NestJS** and **PostgreSQL*
 
 ```
 src/
-├── booking/         # Handles bookings (controller, service, entity)
-├── jobs/            # Job logic and job entity
-├── scheduler/       # Polling service to run due jobs
-├── database/        # TypeORM DB configuration
-└── main.ts          # Application bootstrap
+├── booking/         # Booking logic (CRUD + auto-cancel)
+├── config/          # TypeORM config files
+├── jobs/            # Job entity + service
+├── logger/          # Winston logger setup
+├── scheduler/       # Cron scheduler to process due jobs
+├── migrations/      # Auto-generated migrations
+├── app.module.ts    # Root module
+└── main.ts          # App bootstrap
 ```
 
 ---
 
-## Setup Instructions
+## Setup Steps
 
-### 1. Clone and install dependencies
+### 1. Clone the Repo
 
 ```bash
-git clone <https://github.com/Deeksha1108/Job_Scheduler.git>
+git clone https://github.com/Deeksha1108/Job_Scheduler.git
 cd job-scheduler
 npm install
 ```
 
-### 2. Configure `.env`
+### 2. Create `.env`
 
-```
+```env
+PORT=3000
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USER=postgres
@@ -59,7 +84,13 @@ DATABASE_PASSWORD=admin
 DATABASE_NAME=job_scheduler
 ```
 
-### 3. Start the server
+### 3. Run Migrations
+
+```bash
+npx typeorm migration:run -d src/config/data-source.ts
+```
+
+### 4. Start Server
 
 ```bash
 npm run start:dev
@@ -67,100 +98,94 @@ npm run start:dev
 
 ---
 
-## Testing the Flow
+## Test the Flow
 
-### Step 1: Create a Booking
-
-Use Postman:
+### Step 1: Create Booking
 
 ```http
 POST http://localhost:3000/booking
 Content-Type: application/json
 
 {
-  "userId": "deek123"
+  "userId": "demo123"
 }
 ```
 
-This creates a booking with status `pending` and schedules a cancel job after 2 minutes.
+> This creates a booking and also schedules a cancel job after 2 minutes.
 
 ### Step 2: Crash the Server
 
-- After booking is created, simulate a crash:
-  - Option 1: Close VSCode terminal using the trash X button or delete icon button
-  - Option 2: Use `kill -9 <PID>` to force kill process
+- Close the terminal OR
+- Use `kill -9 <PID>`
 
-### Step 3: Restart the Server
+### Step 3: Restart Server
 
 ```bash
 npm run start:dev
 ```
 
-- After 2 minutes from booking creation, terminal should show:
+> The job will still execute and cancel the booking after 2 mins.
+
+Terminal output:
 
 ```
-Running job to cancel booking: <booking-id>
-Booking <booking-id> cancelled & job marked done
+[SCHEDULER] Running scheduled job poll...
+[BOOKING] Booking cancelled successfully: <booking-id>
+[JOB] Job marked completed
 ```
 
 ---
 
-## How It Works
+## Internal Working
 
-- Bookings are created with status `pending`
-- A job is inserted in the `jobs` table with `runAt = now + 2 mins`
-- `SchedulerService` polls every 10s to find jobs with:
+1. `BookingService` creates a booking with status `PENDING`
+2. `JobsService` stores a job in DB with `runAt = now + 2 mins`
+3. `SchedulerService` runs every 10s using NestJS's `@Cron()` decorator
+4. It fetches due jobs:
 
-```sql
-status = 'pending' AND runAt <= NOW()
-```
+   ```sql
+   SELECT * FROM jobs WHERE status = 'pending' AND runAt <= NOW();
+   ```
 
-- If found, the booking is auto-cancelled and job marked as `completed`
-
----
-
-## Real-World Use Case Implemented
-
-Auto-cancel ride bookings like in:
-
-- Ola
-- Uber
-- Rapido
-- Zomato delivery assignments
+5. Each job is processed:
+   - Locked to prevent race condition
+   - Booking is checked & cancelled if still pending
+   - Job is marked as completed
 
 ---
 
-## Final Result
+## Production-Level Practices
 
-- Jobs are persisted in PostgreSQL
-- Server crash simulated successfully
-- Jobs executed even after server restart
-- Fully custom implementation
+- DB-persisted jobs (no job is lost)
+- Retry mechanism (each job gets 3 retry attempts)
+- Edge cases handled:
+  - What if booking already confirmed/cancelled?
+  - What if server is down when job was due?
+
+- TypeORM migrations used instead of schema sync
+- Winston logger for clean logs (file + console)
+- Generic error messages — secure for production
 
 ---
 
-## What I Learned from This Assignment
+## What I Learned from This Project
 
-- This assignment helped me understand how to plan and build a solution step by step, just like it’s done in real-world projects.
+- I learned how to break down a real-world backend problem and build a custom scheduler system from scratch using NestJS.
+- I understood how **persistent job schedulers** work and how jobs can be reliably stored and executed later.
+- Instead of relying on tools like `setTimeout` or `setInterval`, I used **NestJS CronScheduler** (`@Cron(CronExpression.EVERY_10_SECONDS)`) to build a robust polling system.
+- I made sure jobs survive crashes using **PostgreSQL**.
+- I used **TypeORM Migrations** to safely generate tables for production.
+- I set up a **Winston Logger** to track success, failures, and crashes clearly.
+- I handled edge cases like:
+  - What if a booking is already confirmed when cancel job runs?
+  - Skip the job execution if the booking has already been confirmed.
+  - What happens if job runs late or after a crash?
+  - Retry logic if job fails the first time
 
-- I learned how a persistent job scheduler works - where jobs can still run even if the server crashes and restarts later. This made me realize how important reliability is in backend systems.
+- I built everything with clean modular architecture — just like real company projects.
 
-- I didn’t use any ready-made libraries. Instead, I built my own logic that keeps checking the database every few seconds to find and run pending jobs. It helped me understand how background workers actually work behind the scenes.
+---
 
-- I used PostgreSQL to save both bookings and jobs. By using database timestamps, I could schedule jobs to run at a specific time later, without any external cron tools.
+## Made By Deeksha
 
-- For the real-life example, I chose the use case of auto-cancelling ride bookings like Ola, Uber, Rapido - where if a ride is not confirmed in time, it's automatically cancelled after a fixed period.
-
-- This concept is also used in many other places:
-
-  Food delivery apps (like Zomato/Swiggy) to auto-cancel unaccepted orders.
-  E-commerce platforms (like Amazon) for flash-sale timeout cart releases.
-  Banking apps for session expiry or auto-logouts.
-  Reminder systems that send alerts after fixed durations.
-  Email services that retry sending failed emails.
-
-- I also faced challenges like how to test crash and restart scenarios properly and also I Fixed it.
-
-## Made By
-
-> Deeksha — with complete custom logic, testing, and real-world simulation based on mentor's task.
+> A fully custom job scheduler project built with real-world thinking, backend crash simulation, database-first persistence, proper logs, and clean code.
