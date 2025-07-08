@@ -15,6 +15,7 @@ This project simulates a real-world scenario just like how platforms such as **O
 - Clean modular structure (separate services for jobs, booking, scheduler)
 - Used **Winston Logger** for better error tracking
 - Used **TypeORM migrations** (instead of unsafe `synchronize: true`)
+- Auto-generated **Swagger API documentation** at `/api` for easier testing and visibility
 
 ---
 
@@ -41,9 +42,10 @@ This same logic applies to:
 - **NestJS** + **@nestjs/schedule** (for cron-style polling)
 - **PostgreSQL** + **TypeORM**
 - **Winston Logger**
+- **Swagger (OpenAPI)** for API testing
 - **date-fns** (for manipulating time)
 - **Dotenv** (env config)
-- **Postman** (for API testing)
+- **Postman** (for manual API testing)
 
 ---
 
@@ -86,15 +88,22 @@ DATABASE_NAME=job_scheduler
 
 ### 3. Run Migrations
 
-```bash
+```
 npx typeorm migration:run -d src/config/data-source.ts
 ```
 
 ### 4. Start Server
 
-```bash
+```
 npm run start:dev
 ```
+
+### 5. Open Swagger API Docs
+
+````
+After starting the server, open your browser and navigate to:
+
+http://localhost:3000/api
 
 ---
 
@@ -109,7 +118,7 @@ Content-Type: application/json
 {
   "userId": "demo123"
 }
-```
+````
 
 > This creates a booking and also schedules a cancel job after 2 minutes.
 
@@ -171,18 +180,33 @@ Terminal output:
 ## What I Learned from This Project
 
 - I learned how to break down a real-world backend problem and build a custom scheduler system from scratch using NestJS.
-- I understood how **persistent job schedulers** work and how jobs can be reliably stored and executed later.
-- Instead of relying on tools like `setTimeout` or `setInterval`, I used **NestJS CronScheduler** (`@Cron(CronExpression.EVERY_10_SECONDS)`) to build a robust polling system.
-- I made sure jobs survive crashes using **PostgreSQL**.
-- I used **TypeORM Migrations** to safely generate tables for production.
+- I understood how persistent job schedulers work and how jobs can be reliably stored and executed later even after app restarts.
+- Instead of relying on tools like `setTimeout` or `setInterval`, I used **NestJS CronScheduler** (`@Cron(CronExpression.EVERY_10_SECONDS)`) to build a robust and scalable polling system.
+- I ensured jobs survive crashes using **PostgreSQL**.
+- I used **TypeORM Migrations** to safely generate tables and structure data for production environments.
 - I set up a **Winston Logger** to track success, failures, and crashes clearly.
 - I handled edge cases like:
   - What if a booking is already confirmed when cancel job runs?
   - Skip the job execution if the booking has already been confirmed.
   - What happens if job runs late or after a crash?
   - Retry logic if job fails the first time
-
 - I built everything with clean modular architecture — just like real company projects.
+
+## Improvements Based on Mentor's Feedback
+
+Earlier, the job locking logic was split across multiple steps (get and then lock), which could cause race conditions.
+
+- I fixed this by combining both into a single atomic call (getAndLockDueJob), which reduces the chance of two workers picking the same job.
+
+- This makes the flow safe for single worker environments.
+
+Based on mentor feedback, I also acknowledged that multi-worker safety needs more robust locking (like using Redis). I proposed adding Redis-based locking to make it production-grade.
+
+Also, instead of hardcoding the next run interval of recurring jobs (addMinutes(..., 2)), I:
+
+- Fetched the recurringInterval value from the job itself dynamically.
+
+- Ensured it’s stored properly in the DB using a dedicated column, and respected at runtime when rescheduling.
 
 ---
 

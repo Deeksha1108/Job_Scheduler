@@ -59,4 +59,7 @@ export class Job {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
+
+  @Column({ type: 'int', nullable: true })
+  recurringInterval?: number;
 }

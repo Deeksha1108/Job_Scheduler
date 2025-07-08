@@ -11,12 +11,17 @@ import {
 import { BookingService } from './booking.service';
 import { logger } from 'src/logger/winston';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Booking')
 @Controller('booking')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new booking' })
+  @ApiResponse({ status: 201, description: 'Booking created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
   async create(@Body() createBookingDto: CreateBookingDto, @Req() req: any) {
     const requestId = req.headers['x-request-id'] || 'N/A';
     const { userId } = createBookingDto;
@@ -65,6 +70,10 @@ export class BookingController {
   }
 
   @Patch(':id/confirm')
+  @ApiOperation({ summary: 'Confirm a booking manually' })
+  @ApiParam({ name: 'id', required: true, description: 'Booking ID' })
+  @ApiResponse({ status: 200, description: 'Booking confirmed successfully' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
   async confirm(@Param('id') id: string) {
     try {
       const booking = await this.bookingService.confirmBooking(id);

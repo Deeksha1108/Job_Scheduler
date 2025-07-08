@@ -21,9 +21,10 @@ export class SchedulerService {
       `[SCHEDULER] Running scheduled job poll at ${new Date().toISOString()}`,
     );
     try {
-      const dueJobs = await this.jobsService.getDueJobs();
+      while (true) {
+        const job = await this.jobsService.getAndLockDueJob();
+        if (!job) break;
 
-      for (const job of dueJobs) {
         logger.info(
           `[SCHEDULER] Scheduler Processing Job ID: ${job.id} | Type: ${job.type}`,
         );
@@ -37,7 +38,6 @@ export class SchedulerService {
               `[SCHEDULER] Scheduler Attempting to lock job ${job.id} (Attempt: ${attempts + 1})`,
             );
 
-            await this.jobsService.lockJob(job.id);
             if (job.type === 'cancel-booking') {
               const { bookingId } = job.payload;
 
@@ -72,14 +72,11 @@ export class SchedulerService {
               await this.bookingService.cancelBooking(bookingId);
 
               if (job.isRecurring) {
-                const nextRunAt = addMinutes(new Date(), 2);
                 await this.jobsService.markJobCompleted(
                   job.id,
-                  true,
-                  nextRunAt,
-                );
-                logger.info(
-                  `[SCHEDULER] Scheduler Recurring job ${job.id} rescheduled at ${nextRunAt}`,
+                  job.isRecurring,
+                  undefined,
+                  job.recurringInterval,
                 );
               } else {
                 await this.jobsService.markJobCompleted(job.id, false);
