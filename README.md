@@ -100,10 +100,12 @@ npm run start:dev
 
 ### 5. Open Swagger API Docs
 
-````
+```
 After starting the server, open your browser and navigate to:
 
 http://localhost:3000/api
+
+```
 
 ---
 
@@ -118,7 +120,7 @@ Content-Type: application/json
 {
   "userId": "demo123"
 }
-````
+```
 
 > This creates a booking and also schedules a cancel job after 2 minutes.
 
